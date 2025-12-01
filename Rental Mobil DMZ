@@ -1,0 +1,260 @@
+#include <iostream>
+#include <fstream>
+#include <vector>
+#include <string>
+#include <sstream>
+#include <iomanip>
+#include <algorithm>
+
+using namespace std;
+
+struct Car {
+    int id;
+    string brand;
+    string model;
+    int year;
+    long long rate_per_day;
+    bool available;
+    string renter_name;
+    string rent_date; // YYYY-MM-DD
+};
+
+vector<Car> cars;
+const string DATA_FILE = "cars.txt";
+
+//helper function
+
+vector<string> split(const string &s, char delim){
+    vector<string> parts;
+    string item;
+    stringstream ss(s);
+    while(getline(ss, item, delim)){
+        parts.push_back(item);
+    }
+    return parts;
+}
+
+int toInt(const string &s){
+    stringstream ss(s);
+    int x = 0;
+    ss >> x;
+    return x;
+}
+
+long long toLL(const string &s){
+    stringstream ss(s);
+    long long x = 0;
+    ss >> x;
+    return x;
+}
+
+// file handling
+
+void load_data(){
+    cars.clear();
+    ifstream in(DATA_FILE.c_str());
+    if(!in.is_open()) return;
+
+    string line;
+    while(getline(in, line)){
+        if(line.empty()) continue;
+        vector<string> p = split(line, ',');
+
+        if(p.size() < 8) continue;
+
+        Car c;
+        c.id = toInt(p[0]);
+        c.brand = p[1];
+        c.model = p[2];
+        c.year = toInt(p[3]);
+        c.rate_per_day = toLL(p[4]);
+        c.available = (p[5] == "1");
+        c.renter_name = p[6];
+        c.rent_date = p[7];
+
+        cars.push_back(c);
+    }
+    in.close();
+}
+
+void save_data(){
+    ofstream out(DATA_FILE.c_str());
+    for(unsigned i = 0; i < cars.size(); i++){
+        Car &c = cars[i];
+        out << c.id << ',' << c.brand << ',' << c.model << ','
+            << c.year << ',' << c.rate_per_day << ','
+            << (c.available ? "1" : "0") << ','
+            << c.renter_name << ',' << c.rent_date << '\n';
+    }
+    out.close();
+    cout << "Data disimpan.\n";
+}
+
+// utilities
+
+int next_id(){
+    int mx = 0;
+    for(unsigned i = 0; i < cars.size(); i++)
+        if(cars[i].id > mx) mx = cars[i].id;
+    return mx + 1;
+}
+
+Car* find_car_by_id(int id){
+    for(unsigned i = 0; i < cars.size(); i++)
+        if(cars[i].id == id) return &cars[i];
+    return NULL;
+}
+
+// menu functions
+void add_car(){
+    Car c;
+    c.id = next_id();
+    cout << "\nBrand: "; getline(cin, c.brand);
+    cout << "Model: "; getline(cin, c.model);
+    cout << "Tahun: "; cin >> c.year;
+    cout << "Biaya per hari: "; cin >> c.rate_per_day;
+    cin.ignore();
+
+    c.available = true;
+    c.renter_name = "";
+    c.rent_date = "";
+
+    cars.push_back(c);
+    cout << "Mobil ditambahkan.\n";
+}
+
+void show_cars(){
+    cout << left << setw(4) << "\nID"
+         << setw(12) << "Brand"
+         << setw(12) << "Model"
+         << setw(6) <<  "Tahun"
+         << setw(12) << "Biaya/hari"
+         << setw(10) << "Status"
+         << setw(12) << "Renter"
+         << setw(12) << "RentDate" << endl;
+
+    cout << string(80,'-') << endl;
+
+    for(unsigned i = 0; i < cars.size(); i++){
+        Car &c = cars[i];
+        cout << setw(4) << c.id
+             << setw(12) << c.brand
+             << setw(12) << c.model
+             << setw(6) << c.year
+             << setw(12) << c.rate_per_day
+             << setw(10) << (c.available ? "Available" : "Rented")
+             << setw(12) << (c.renter_name.empty() ? "-" : c.renter_name)
+             << setw(12) << (c.rent_date.empty() ? "-" : c.rent_date)
+             << endl;
+    }
+}
+
+void edit_car(){
+    int id;
+    cout << "\nID mobil: ";
+    cin >> id;
+    cin.ignore();
+
+    Car* p = find_car_by_id(id);
+    if(!p){ cout << "Tidak ditemukan.\n"; return; }
+
+    string s;
+    cout << "Brand (" << p->brand << "): ";
+    getline(cin, s); if(!s.empty()) p->brand = s;
+
+    cout << "Model (" << p->model << "): ";
+    getline(cin, s); if(!s.empty()) p->model = s;
+
+    cout << "Tahun (" << p->year << "): ";
+    getline(cin, s); if(!s.empty()) p->year = toInt(s);
+
+    cout << "Biaya (" << p->rate_per_day << "): ";
+    getline(cin, s); if(!s.empty()) p->rate_per_day = toLL(s);
+
+    cout << "Data diperbarui.\n";
+}
+
+void delete_car(){
+    int id;
+    cout << "ID mobil: ";
+    cin >> id;
+    cin.ignore();
+
+    for(vector<Car>::iterator it = cars.begin(); it != cars.end(); ++it){
+        if(it->id == id){
+            cars.erase(it);
+            cout << "Mobil dihapus.\n";
+            return;
+        }
+    }
+    cout << "Tidak ditemukan.\n";
+}
+
+void rent_car(){
+    int id;
+    cout << "\nID mobil: ";
+    cin >> id;
+    cin.ignore();
+
+    Car* p = find_car_by_id(id);
+    if(!p){ cout << "Tidak ditemukan.\n"; return; }
+    if(!p->available){ cout << "Sudah disewa.\n"; return; }
+
+    cout << "Nama penyewa: ";
+    getline(cin, p->renter_name);
+    cout << "Tanggal sewa: ";
+    getline(cin, p->rent_date);
+
+    p->available = false;
+    cout << "Sewa berhasil.\n";
+}
+
+void return_car(){
+    int id;
+    cout << "\nID mobil: ";
+    cin >> id;
+    cin.ignore();
+
+    Car* p = find_car_by_id(id);
+    if(!p || p->available){
+        cout << "Mobil tidak ditemukan atau sudah tersedia.\n";
+        return;
+    }
+
+    p->available = true;
+    p->renter_name = "";
+    p->rent_date = "";
+    cout << "Mobil dikembalikan.\n";
+}
+
+// main function
+
+int main(){
+    load_data();
+    while(true){
+        cout << "\n[[ RENTAL MOBIL ]]\n";
+        cout << "1. Tambah mobil\n";
+        cout << "2. Tampilkan mobil\n";
+        cout << "3. Edit mobil\n";
+        cout << "4. Hapus mobil\n";
+        cout << "5. Sewa mobil\n";
+        cout << "6. Kembalikan mobil\n";
+        cout << "7. Simpan & keluar\n";
+        cout << "Pilih: ";
+
+        int opt;
+        cin >> opt;
+        cin.ignore();
+
+        switch(opt){
+            case 1: add_car(); break;
+            case 2: show_cars(); break;
+            case 3: edit_car(); break;
+            case 4: delete_car(); break;
+            case 5: rent_car(); break;
+            case 6: return_car(); break;
+            case 7: save_data(); return 0;
+            default: cout << "Pilihan tidak valid.\n";
+        }
+    }
+}
